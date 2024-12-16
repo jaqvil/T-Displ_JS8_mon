@@ -1,3 +1,4 @@
-Will get to putting some meat on this readme.. a bit late this evening :-)
+Check out the [Wiki](https://github.com/jaqvil/T-Displ_JS8_mon.wiki.git) page :-)
 
-73
+  
+![image](https://github.com/user-attachments/assets/efb5ad8a-f952-4d01-9aed-3f254b0b7378)
