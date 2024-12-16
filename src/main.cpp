@@ -16,13 +16,11 @@
 const char* ssid = "your_ssid";
 const char* password = "your_password";
 
+// PC running JS8Call app details
+const char* host = "your_pc_running_the_JS8Call_app";
+const int port = 42442; // Default port for JS8Call
+
 #endif
-
-// Server details
-const char* host = "borgbackup-vm.lan";
-const int port = 42442;
-
-bool backlight_on = true;
 
 TFT_eSPI tft = TFT_eSPI();  // Invoke custom library
 
@@ -117,9 +115,9 @@ void setBrightness()
   uint8_t brightness = 220;
   if (messageAge < 30000) { 
     // 30 seconds
-    brightness = 220 - (messageAge * 205 / 30000);
+    brightness = 220 - (messageAge * 210 / 30000);
   } else{
-    brightness = 15;
+    brightness = 10;
   }
 
   // Set text color based on brightness

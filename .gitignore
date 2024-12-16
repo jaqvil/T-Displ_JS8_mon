@@ -4,3 +4,7 @@
 .vscode/launch.json
 .vscode/ipch
 src/my_config.h
+.vscode/extensions.json
+include/README
+lib/README
+test/README
