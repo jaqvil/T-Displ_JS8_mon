@@ -31,6 +31,7 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000);  // Update every 60 seco
 struct LastMessage {
     String from;
     String to;
+    int offset;
     int snr;
     String text;
     unsigned long timestamp;
@@ -130,53 +131,21 @@ void displayMessage() {
 
     setBrightness();
 
-    // Get display width
-    int16_t width = tft.width();
-    
-    // Calculate positions
-    String arrow = "->";
-    int16_t arrowWidth = tft.textWidth(arrow);
-    int16_t arrowX = (width - arrowWidth) / 2;
-    
     // Clear the screen
     tft.fillRect(0, 0, tft.width(), tft.height(), TFT_BLACK);
     
     // Draw from text left aligned
     tft.setCursor(0, 0);
-    tft.print(lastMsg.from);
-    
-    // Draw arrow in center
-    tft.setCursor(arrowX, 0);
-    tft.print(arrow);
-    
-    // Draw to text right aligned
-    int16_t toWidth = tft.textWidth(lastMsg.to);
-    tft.setCursor(width - toWidth, 0);
-    tft.printf("%s\n", lastMsg.to.c_str());
-    
-    tft.printf("SNR  : %d\n", lastMsg.snr);
-    tft.printf("%s\n", lastMsg.text.c_str());
-
-    // Display date and time in a subtler color
-    // tft.setTextColor(TFT_NAVY, TFT_BLACK);
-    tft.setCursor(0, tft.height() - 20);
-    tft.printf("%s", getCurrentDateTime().c_str());
+    tft.printf("%s > %s\n",lastMsg.from ,lastMsg.to.c_str());
+    tft.print("SNR: ");
+    tft.print(lastMsg.snr);
+    tft.print(" @");
+    tft.print(lastMsg.offset);
+    tft.print("\n");
+    tft.print(lastMsg.text);
 
 }
 
-void printDebugInfo() {
-    static unsigned long lastDebugPrint = 0;
-    if (millis() - lastDebugPrint >= 5000) { // Print every 5 seconds
-        lastDebugPrint = millis();
-        
-        Serial.printf("\n=== Debug Info ===\n");
-        Serial.printf("Uptime: %lu ms\n", millis());
-        Serial.printf("Free Heap: %u bytes\n", ESP.getFreeHeap());
-        Serial.printf("CPU Freq: %u MHz\n", ESP.getCpuFreqMHz());
-        Serial.printf("CPU Temp: %.2f °C\n", (float)(temperatureRead() - 32) / 1.8);
-        Serial.printf("================\n");
-    }
-}
 
 void loop() {
     if (client.connected()) {
@@ -202,6 +171,7 @@ void loop() {
                         // Store message in lastMsg structure
                         lastMsg.from = params["FROM"] | "N/A";
                         lastMsg.to = params["TO"] | "N/A";
+                        lastMsg.offset = params["OFFSET"] | -1;
                         lastMsg.snr = params["SNR"] | -1;
                         lastMsg.text = params["TEXT"] | "N/A";
                         lastMsg.timestamp = millis();
@@ -212,11 +182,16 @@ void loop() {
             }
         }
         
-        // Update display periodically
+        // Update display periodically and refresh clock
         static unsigned long lastUpdate = 0;
         if (millis() - lastUpdate >= 1000) {  // Update every second
             lastUpdate = millis();
             setBrightness();  // dim the display as the message ages
+            
+            // Display date and time in a subtler color
+            // tft.setTextColor(TFT_NAVY, TFT_BLACK);
+            tft.setCursor(0, tft.height() - 20);
+            tft.printf("%s", getCurrentDateTime().c_str());
         }
     } else {
         Serial.println("Disconnected from server, attempting to reconnect...");
@@ -225,6 +200,6 @@ void loop() {
             Serial.println("Reconnected to server");
         }
     }
-    printDebugInfo();  // Add before final delay
-    delay(100);  // Small delay to prevent loop from running too fast
+    
+    delay(1);  // Small delay to prevent loop from running too fast
 }
