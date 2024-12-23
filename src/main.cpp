@@ -35,7 +35,11 @@ struct LastMessage {
     int snr;
     String text;
     unsigned long timestamp;
-} lastMsg;
+};
+
+LastMessage lastMessages[10];
+int currentMsgIndex = 0;
+int totalMessages = 0;
 
 // Function to get the short string representation of the month
 const char* monthShortStr(int month) {
@@ -94,6 +98,10 @@ void setup() {
 
   // Initialize NTP client
   timeClient.begin();
+
+  // Setup buttons for next and previous message
+  pinMode(12, INPUT_PULLUP); // Button for next message
+  pinMode(13, INPUT_PULLUP); // Button for previous message
 }
 
 // Replace calculateBrightness with these color functions
@@ -112,7 +120,7 @@ void setBrightness()
 {
   // Calculate brightness based on time elapsed
   unsigned long currentTime = millis();
-  unsigned long messageAge = currentTime - lastMsg.timestamp;
+  unsigned long messageAge = currentTime - lastMessages[currentMsgIndex].timestamp;
   uint8_t brightness = 220;
   if (messageAge < 30000) { 
     // 30 seconds
@@ -127,7 +135,7 @@ void setBrightness()
 
 
 void displayMessage() {
-    if (lastMsg.timestamp == 0) return;
+    if (lastMessages[currentMsgIndex].timestamp == 0) return;
 
     setBrightness();
 
@@ -136,16 +144,28 @@ void displayMessage() {
     
     // Draw from text left aligned
     tft.setCursor(0, 0);
-    tft.printf("%s > %s\n",lastMsg.from ,lastMsg.to.c_str());
+    tft.printf("%s > %s\n", lastMessages[currentMsgIndex].from.c_str(), lastMessages[currentMsgIndex].to.c_str());
     tft.print("SNR: ");
-    tft.print(lastMsg.snr);
+    tft.print(lastMessages[currentMsgIndex].snr);
     tft.print(" @");
-    tft.print(lastMsg.offset);
+    tft.print(lastMessages[currentMsgIndex].offset);
     tft.print("\n");
-    tft.print(lastMsg.text);
-
+    tft.print(lastMessages[currentMsgIndex].text);
 }
 
+void nextMessage() {
+    if (totalMessages > 0) {
+        currentMsgIndex = (currentMsgIndex + 1) % totalMessages;
+        displayMessage();
+    }
+}
+
+void prevMessage() {
+    if (totalMessages > 0) {
+        currentMsgIndex = (currentMsgIndex - 1 + totalMessages) % totalMessages;
+        displayMessage();
+    }
+}
 
 void loop() {
     if (client.connected()) {
@@ -168,13 +188,17 @@ void loop() {
                 if (doc["type"] == "RX.DIRECTED") {
                     JsonObject params = doc["params"];
                     if (!params.isNull()) {
-                        // Store message in lastMsg structure
-                        lastMsg.from = params["FROM"] | "N/A";
-                        lastMsg.to = params["TO"] | "N/A";
-                        lastMsg.offset = params["OFFSET"] | -1;
-                        lastMsg.snr = params["SNR"] | -1;
-                        lastMsg.text = params["TEXT"] | "N/A";
-                        lastMsg.timestamp = millis();
+                        // Store message in lastMessages array
+                        lastMessages[totalMessages % 10] = {
+                            params["FROM"] | "N/A",
+                            params["TO"] | "N/A",
+                            params["OFFSET"] | -1,
+                            params["SNR"] | -1,
+                            params["TEXT"] | "N/A",
+                            millis()
+                        };
+                        totalMessages++;
+                        currentMsgIndex = (totalMessages - 1) % 10;
                         
                         displayMessage();
                     }
@@ -192,6 +216,16 @@ void loop() {
             // tft.setTextColor(TFT_NAVY, TFT_BLACK);
             tft.setCursor(0, tft.height() - 20);
             tft.printf("%s", getCurrentDateTime().c_str());
+        }
+
+        // Check button states for next and previous message
+        if (digitalRead(12) == LOW) {
+            nextMessage();
+            delay(200); // Debounce delay
+        }
+        if (digitalRead(13) == LOW) {
+            prevMessage();
+            delay(200); // Debounce delay
         }
     } else {
         Serial.println("Disconnected from server, attempting to reconnect...");
