@@ -37,7 +37,8 @@ struct LastMessage {
     unsigned long timestamp;
 };
 
-LastMessage lastMessages[10];
+const int maxNrMessages = 30;
+LastMessage lastMessages[maxNrMessages + 1];
 int currentMsgIndex = 0;
 int totalMessages = 0;
 
@@ -100,8 +101,8 @@ void setup() {
   timeClient.begin();
 
   // Setup buttons for next and previous message
-  pinMode(12, INPUT_PULLUP); // Button for next message
-  pinMode(13, INPUT_PULLUP); // Button for previous message
+  pinMode(0, INPUT_PULLUP); // Button for next message
+  pinMode(35, INPUT_PULLUP); // Button for previous message
 }
 
 // Replace calculateBrightness with these color functions
@@ -142,6 +143,8 @@ void displayMessage() {
     // Clear the screen
     tft.fillRect(0, 0, tft.width(), tft.height(), TFT_BLACK);
     
+    tft.setCursor(tft.width()-60, 0);
+    tft.printf("id:%i", currentMsgIndex+1);
     // Draw from text left aligned
     tft.setCursor(0, 0);
     tft.printf("%s > %s\n", lastMessages[currentMsgIndex].from.c_str(), lastMessages[currentMsgIndex].to.c_str());
@@ -151,18 +154,20 @@ void displayMessage() {
     tft.print(lastMessages[currentMsgIndex].offset);
     tft.print("\n");
     tft.print(lastMessages[currentMsgIndex].text);
+
+
 }
 
 void nextMessage() {
     if (totalMessages > 0) {
-        currentMsgIndex = (currentMsgIndex + 1) % totalMessages;
+        currentMsgIndex = (currentMsgIndex + 1) % maxNrMessages;
         displayMessage();
     }
 }
 
 void prevMessage() {
     if (totalMessages > 0) {
-        currentMsgIndex = (currentMsgIndex - 1 + totalMessages) % totalMessages;
+        currentMsgIndex = (currentMsgIndex - 1 + maxNrMessages) % maxNrMessages;
         displayMessage();
     }
 }
@@ -189,7 +194,7 @@ void loop() {
                     JsonObject params = doc["params"];
                     if (!params.isNull()) {
                         // Store message in lastMessages array
-                        lastMessages[totalMessages % 10] = {
+                        lastMessages[totalMessages % maxNrMessages] = {
                             params["FROM"] | "N/A",
                             params["TO"] | "N/A",
                             params["OFFSET"] | -1,
@@ -198,8 +203,9 @@ void loop() {
                             millis()
                         };
                         totalMessages++;
-                        currentMsgIndex = (totalMessages - 1) % 10;
-                        
+                        currentMsgIndex = (totalMessages - 1) % maxNrMessages;
+                        //Serial.printf("totalMessages: %i\tcurrentMsgIndex: %i\n", totalMessages, currentMsgIndex);
+
                         displayMessage();
                     }
                 }
@@ -219,13 +225,13 @@ void loop() {
         }
 
         // Check button states for next and previous message
-        if (digitalRead(12) == LOW) {
+        if (digitalRead(35) == LOW) {
             nextMessage();
-            delay(200); // Debounce delay
+            delay(270); // Debounce delay
         }
-        if (digitalRead(13) == LOW) {
+        if (digitalRead(0) == LOW) {
             prevMessage();
-            delay(200); // Debounce delay
+            delay(270); // Debounce delay
         }
     } else {
         Serial.println("Disconnected from server, attempting to reconnect...");
@@ -235,5 +241,5 @@ void loop() {
         }
     }
     
-    delay(1);  // Small delay to prevent loop from running too fast
+    delay(5);  // Small delay to prevent loop from running too fast
 }
