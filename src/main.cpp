@@ -22,6 +22,8 @@ const int port = 42442; // Default port for JS8Call
 
 #endif
 
+const int textSize = 1; // size of the text on the display
+
 TFT_eSPI tft = TFT_eSPI();  // Invoke custom library
 
 WiFiClient client;
@@ -49,9 +51,14 @@ const char* monthShortStr(int month) {
 }
 
 // Add this function to get the current date and time
-String getCurrentDateTime() {
+unsigned long getCurrentDateTime() {
     timeClient.update();
-    unsigned long epochTime = timeClient.getEpochTime();
+    // unsigned long epochTime = timeClient.getEpochTime();
+    return timeClient.getEpochTime(); 
+}
+
+String getStringDateTime(unsigned long epochTime) {
+    //unsigned long epochTime 
     struct tm *ptm = gmtime ((time_t *)&epochTime);
     
     char dateBuffer[11];
@@ -67,10 +74,12 @@ void setup() {
   // Initialize TFT
   tft.init();
   tft.setRotation(1);  // Adjust based on your display orientation
+  tft.setTextFont(2);
+  tft.setTextSize(textSize);
+  tft.setCursor(0, 0);
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setCursor(0, 0);
+  
   
   //for backlight control
   ledcSetup(0, 5000, 8); // channel 0, 5000 Hz, 8-bit resolution
@@ -120,8 +129,7 @@ uint16_t dimColor(uint8_t brightness) {
 void setBrightness()
 {
   // Calculate brightness based on time elapsed
-  unsigned long currentTime = millis();
-  unsigned long messageAge = currentTime - lastMessages[currentMsgIndex].timestamp;
+  unsigned long messageAge = getCurrentDateTime() - lastMessages[currentMsgIndex].timestamp;
   uint8_t brightness = 220;
   if (messageAge < 30000) { 
     // 30 seconds
@@ -143,8 +151,10 @@ void displayMessage() {
     // Clear the screen
     tft.fillRect(0, 0, tft.width(), tft.height(), TFT_BLACK);
     
-    tft.setCursor(tft.width()-60, 0);
-    tft.printf("id:%i", currentMsgIndex+1);
+    //String indexMsg = String("id:" + (currentMsgIndex + 1));
+    tft.setCursor(tft.width()-(5*8),0);
+    tft.printf("id:%i",(currentMsgIndex + 1));
+
     // Draw from text left aligned
     tft.setCursor(0, 0);
     tft.printf("%s > %s\n", lastMessages[currentMsgIndex].from.c_str(), lastMessages[currentMsgIndex].to.c_str());
@@ -153,7 +163,13 @@ void displayMessage() {
     tft.print(" @");
     tft.print(lastMessages[currentMsgIndex].offset);
     tft.print("\n");
+    //tft.setTextSize((float)1.5);
     tft.print(lastMessages[currentMsgIndex].text);
+    //tft.setTextSize(textSize);
+    tft.print("\n");
+    String timestamp = getStringDateTime(lastMessages[currentMsgIndex].timestamp);
+    tft.setCursor(0, tft.height() - tft.textsize - 15);
+    tft.print(timestamp);
 
 
 }
@@ -200,7 +216,7 @@ void loop() {
                             params["OFFSET"] | -1,
                             params["SNR"] | -1,
                             params["TEXT"] | "N/A",
-                            millis()
+                            getCurrentDateTime()
                         };
                         totalMessages++;
                         currentMsgIndex = (totalMessages - 1) % maxNrMessages;
@@ -220,8 +236,11 @@ void loop() {
             
             // Display date and time in a subtler color
             // tft.setTextColor(TFT_NAVY, TFT_BLACK);
-            tft.setCursor(0, tft.height() - 20);
-            tft.printf("%s", getCurrentDateTime().c_str());
+            tft.setCursor(0, tft.height() - (tft.textsize*16));
+            String timestamp = getStringDateTime(getCurrentDateTime());
+            //Serial.printf("timestamp: %s\ttft.width: %i\ttft.textWidth(timestamp): %i\ttft.height: %i\ttft.textsize: %i\n", timestamp, tft.width(), tft.textWidth(timestamp), tft.height(), tft.textsize);
+            tft.setCursor(tft.width() - tft.textWidth(timestamp), tft.height() - (tft.textsize*16));
+            tft.printf("%s", timestamp.c_str());
         }
 
         // Check button states for next and previous message
